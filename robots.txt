@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# The reader loads these documents at runtime; they are not pages to index.
+Disallow: /pdf/
+
+Sitemap: https://docsreader.wib.digital/sitemap.xml

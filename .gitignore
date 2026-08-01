@@ -1,0 +1,31 @@
+# Dependencies — the project has none, but `npx serve` can leave a cache behind
+node_modules/
+.npm/
+.pnpm-store/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating system
+.DS_Store
+.AppleDouble
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Hosting
+.vercel/
+.netlify/

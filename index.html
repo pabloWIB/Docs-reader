@@ -1,736 +1,213 @@
-<!DOCTYPE html>
-<html lang="es">
+<!doctype html>
+<html lang="es" data-pdf-worker="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <link rel="icon" type="image/png" href="favicon/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="favicon/favicon.svg" />
-    <link rel="shortcut icon" href="favicon/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png" />
-    <link rel="manifest" href="favicon/site.webmanifest" />
-    <title>Reader</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Built by Pablo Nieto Pérez — wib.digital
+       Need changes or a new build? https://www.fiverr.com/pablonietop -->
+  <meta name="author" content="Pablo Nieto Pérez — wib.digital">
+  <link rel="author" href="https://www.fiverr.com/pablonietop">
 
-        :root {
-            --bg: #0a0a0a;
-            --ink: #f0f0f0;
-            --ink-dim: #666;
-            --ink-faint: #222;
-            --line: #1e1e1e;
-            --highlight: rgba(255, 255, 255, 0.15);
-            --current: rgba(255, 255, 255, 0.35);
-        }
+  <title>Docs Reader — lector de PDF con lectura en voz alta</title>
+  <meta name="description"
+    content="Lector de PDF en el navegador: abre un documento, escúchalo con la voz del sistema y sigue la lectura resaltada palabra por palabra sobre la propia página.">
+  <link rel="canonical" href="https://docsreader.wib.digital/">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="color-scheme" content="dark">
 
-        html,
-        body {
-            height: 100%;
-            background: var(--bg);
-            color: var(--ink);
-            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-        }
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Docs Reader">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:url" content="https://docsreader.wib.digital/">
+  <meta property="og:title" content="Docs Reader — lector de PDF con lectura en voz alta">
+  <meta property="og:description"
+    content="Lector de PDF en el navegador: abre un documento, escúchalo con la voz del sistema y sigue la lectura resaltada palabra por palabra sobre la propia página.">
+  <meta property="og:image" content="https://docsreader.wib.digital/assets/img/icons/icon-512.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="Icono de Docs Reader: un libro abierto junto a una onda de sonido.">
 
-        #screen-select {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 48px 32px;
-            max-width: 520px;
-            margin: 0 auto;
-        }
+  <link rel="icon" href="assets/img/icons/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" href="assets/img/icons/favicon-96x96.png" sizes="96x96">
+  <link rel="apple-touch-icon" href="assets/img/icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
 
-        .label-mono {
-            font-size: .65rem;
-            letter-spacing: .15em;
-            color: var(--ink-dim);
-            text-transform: uppercase;
-            margin-bottom: 24px;
-        }
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
+  <link rel="stylesheet" href="assets/css/components.css">
 
-        .book-list {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .book-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 20px 0;
-            border-bottom: 1px solid var(--line);
-            cursor: pointer;
-            transition: opacity .15s;
-            background: none;
-            border-left: none;
-            border-right: none;
-            border-top: none;
-            color: var(--ink);
-            text-align: left;
-            width: 100%;
-        }
-
-        .book-item:first-child {
-            border-top: 1px solid var(--line);
-        }
-
-        .book-item:hover .book-title {
-            opacity: .6;
-        }
-
-        .book-num {
-            font-size: .65rem;
-            color: var(--ink-dim);
-            padding-top: 3px;
-            width: 20px;
-            flex-shrink: 0;
-        }
-
-        .book-info {
-            flex: 1;
-        }
-
-        .book-title {
-            font-size: 1rem;
-            font-weight: 400;
-            line-height: 1.4;
-            margin-bottom: 4px;
-            transition: opacity .15s;
-        }
-
-        .book-meta {
-            font-size: .7rem;
-            color: var(--ink-dim);
-        }
-
-        .book-arrow {
-            color: var(--ink-dim);
-            font-size: .9rem;
-            padding-top: 2px;
-        }
-
-        #screen-reader {
-            display: none;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        #topbar {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            border-bottom: 1px solid var(--line);
-            height: 48px;
-            flex-shrink: 0;
-            padding: 0 16px;
-        }
-
-        #btn-back {
-            background: none;
-            border: none;
-            color: var(--ink-dim);
-            cursor: pointer;
-            font-family: inherit;
-            font-size: .75rem;
-            letter-spacing: .05em;
-            padding: 0 12px 0 0;
-            margin-right: 12px;
-            border-right: 1px solid var(--line);
-            height: 100%;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: color .15s;
-        }
-
-        #btn-back:hover {
-            color: var(--ink);
-        }
-
-        #topbar-title {
-            font-size: .72rem;
-            color: var(--ink-dim);
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        #page-counter {
-            font-size: .7rem;
-            color: var(--ink-dim);
-            flex-shrink: 0;
-        }
-
-        #ctrlbar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            border-bottom: 1px solid var(--line);
-            padding: 8px 16px;
-            flex-shrink: 0;
-        }
-
-        #btn-play {
-            background: var(--ink);
-            color: var(--bg);
-            border: none;
-            border-radius: 0;
-            font-family: inherit;
-            font-size: .75rem;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            padding: 8px 18px;
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: opacity .15s;
-            font-weight: 600;
-        }
-
-        #btn-play:hover {
-            opacity: .8;
-        }
-
-        #btn-stop {
-            background: none;
-            border: 1px solid var(--line);
-            color: var(--ink-dim);
-            font-family: inherit;
-            font-size: .75rem;
-            padding: 8px 14px;
-            cursor: pointer;
-            transition: color .15s, border-color .15s;
-            flex-shrink: 0;
-        }
-
-        #btn-stop:hover {
-            color: var(--ink);
-            border-color: var(--ink-dim);
-        }
-
-        #btn-stop:disabled {
-            opacity: .3;
-            cursor: default;
-        }
-
-        .sep {
-            width: 1px;
-            height: 20px;
-            background: var(--line);
-            flex-shrink: 0;
-        }
-
-        #voiceSelect {
-            background: none;
-            border: none;
-            color: var(--ink-dim);
-            font-family: inherit;
-            font-size: .72rem;
-            cursor: pointer;
-            flex-shrink: 0;
-            max-width: 150px;
-            padding: 4px 0;
-        }
-
-        #voiceSelect:focus {
-            outline: none;
-        }
-
-        #voiceSelect option {
-            background: #111;
-            color: var(--ink);
-        }
-
-        .speed-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .speed-label {
-            font-size: .68rem;
-            color: var(--ink-dim);
-            min-width: 28px;
-        }
-
-        input[type=range] {
-            width: 80px;
-            height: 2px;
-            background: var(--line);
-            border-radius: 0;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
-            background: var(--ink);
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        input[type=range]::-moz-range-thumb {
-            width: 12px;
-            height: 12px;
-            background: var(--ink);
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-        }
-
-        .page-nav {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-
-        .btn-pg {
-            background: none;
-            border: 1px solid var(--line);
-            color: var(--ink-dim);
-            width: 28px;
-            height: 28px;
-            cursor: pointer;
-            font-size: .85rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color .15s;
-            font-family: inherit;
-        }
-
-        .btn-pg:hover {
-            color: var(--ink);
-            border-color: var(--ink-dim);
-        }
-
-        #progressbar {
-            height: 2px;
-            background: var(--line);
-            flex-shrink: 0;
-        }
-
-        #progressfill {
-            height: 100%;
-            background: var(--ink);
-            width: 0%;
-            transition: width .4s;
-        }
-
-        #viewer {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px 16px 48px;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        #viewer::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        #viewer::-webkit-scrollbar-track {
-            background: var(--bg);
-        }
-
-        #viewer::-webkit-scrollbar-thumb {
-            background: var(--line);
-        }
-
-        .page-block {
-            position: relative;
-            margin: 0 auto 24px;
-            max-width: 720px;
-            overflow: hidden;
-        }
-
-        .page-block canvas {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-
-        .text-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            overflow: hidden;
-        }
-
-        .word {
-            position: absolute;
-            color: transparent;
-            border-radius: 1px;
-            transition: background .1s;
-        }
-
-        .word.done {
-            background: rgba(255, 255, 255, .08);
-        }
-
-        .word.current {
-            background: rgba(255, 255, 255, .4);
-        }
-
-        .page-tag {
-            text-align: center;
-            font-size: .6rem;
-            color: var(--ink-dim);
-            letter-spacing: .1em;
-            padding: 8px 0 0;
-        }
-
-        #loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            gap: 16px;
-            color: var(--ink-dim);
-        }
-
-        .dot-loader {
-            display: flex;
-            gap: 6px;
-        }
-
-        .dot-loader span {
-            width: 6px;
-            height: 6px;
-            background: var(--ink-dim);
-            border-radius: 50%;
-            animation: blink 1.2s infinite;
-        }
-
-        .dot-loader span:nth-child(2) {
-            animation-delay: .2s;
-        }
-
-        .dot-loader span:nth-child(3) {
-            animation-delay: .4s;
-        }
-
-        @keyframes blink {
-
-            0%,
-            80%,
-            100% {
-                opacity: .2
-            }
-
-            40% {
-                opacity: 1
-            }
-        }
-
-        #loading p {
-            font-size: .72rem;
-            letter-spacing: .05em;
-        }
-    </style>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+    integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+  <script type="module" src="assets/js/main.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Pablo Nieto Pérez",
+    "url": "https://wib.digital",
+    "jobTitle": "Web Designer and Developer",
+    "sameAs": [
+      "https://www.fiverr.com/pablonietop",
+      "https://www.linkedin.com/in/pablo-nieto-perez-39a530292"
+    ]
+  }
+  </script>
 </head>
 
 <body>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
 
-    <div id="screen-select">
-        <p class="label-mono">/ reader</p>
-        <div class="book-list">
-            <button class="book-item"
-                onclick="openBook('Thecoldstartproblem.pdf','The Cold Start Problem','Andrew Chen')">
-                <span class="book-num">01</span>
-                <div class="book-info">
-                    <div class="book-title">The Cold Start Problem</div>
-                    <div class="book-meta">Andrew Chen</div>
-                </div>
-                <span class="book-arrow">→</span>
+  <main id="main">
+
+    <!-- ─────────────────────────────── Biblioteca ─────────────────────────── -->
+    <section class="screen library" id="library" aria-labelledby="library-title">
+      <header class="library__head">
+        <h1 id="library-title" tabindex="-1">Docs Reader</h1>
+        <p class="library__lede">
+          Lector de PDF que además lee en voz alta. Abre un documento, elige una voz del sistema
+          y sigue la lectura resaltada palabra por palabra sobre la propia página. Todo ocurre
+          en tu navegador: ningún archivo se envía a ningún servidor.
+        </p>
+      </header>
+
+      <section class="library__section" id="shelf" aria-labelledby="shelf-title">
+        <h2 class="label-mono" id="shelf-title">En el repositorio</h2>
+        <ul class="book-list" id="book-list">
+          <li class="book-list__item">
+            <button class="book" type="button" data-pdf="pdf/the-cold-start-problem.pdf"
+              data-title="The Cold Start Problem" data-author="Andrew Chen">
+              <span class="book__num" aria-hidden="true">01</span>
+              <span class="book__body">
+                <span class="book__title">The Cold Start Problem</span>
+                <span class="book__author">Andrew Chen</span>
+              </span>
+              <span class="book__go" aria-hidden="true">→</span>
             </button>
-            <button class="book-item"
-                onclick="openBook('_OceanofPDF.com_Platform_Revolution_How_Networked_Markets_Are_Transforming_the_Eco\nomy--And_How_to_Make_Them_Work_for_You_-_Sangeet_Paul_Choudary.pdf','Platform Revolution','Sangeet Paul Choudary')">
-                <span class="book-num">02</span>
-                <div class="book-info">
-                    <div class="book-title">Platform Revolution</div>
-                    <div class="book-meta">Sangeet Paul Choudary</div>
-                </div>
-                <span class="book-arrow">→</span>
+          </li>
+          <li class="book-list__item">
+            <button class="book" type="button" data-pdf="pdf/platform-revolution.pdf"
+              data-title="Platform Revolution" data-author="Sangeet Paul Choudary">
+              <span class="book__num" aria-hidden="true">02</span>
+              <span class="book__body">
+                <span class="book__title">Platform Revolution</span>
+                <span class="book__author">Sangeet Paul Choudary</span>
+              </span>
+              <span class="book__go" aria-hidden="true">→</span>
             </button>
+          </li>
+        </ul>
+      </section>
+
+      <section class="library__section" id="local" aria-labelledby="local-title">
+        <h2 class="label-mono" id="local-title">Desde tu equipo</h2>
+        <div class="filepick">
+          <input class="filepick__input" id="file-input" type="file" accept="application/pdf,.pdf">
+          <label class="filepick__label" for="file-input">
+            <span aria-hidden="true">+</span> Abrir un PDF de tu equipo
+          </label>
+          <p class="filepick__note">Se abre en el navegador. No se sube a ningún servidor.</p>
         </div>
-    </div>
+      </section>
 
-    <div id="screen-reader">
-        <div id="topbar">
-            <button id="btn-back" onclick="goBack()">← libros</button>
-            <span id="topbar-title">—</span>
-            <span id="page-counter">— / —</span>
+      <p class="notice" id="library-notice" hidden></p>
+
+      <p class="notice" id="file-protocol-notice" hidden>
+        Has abierto <code>index.html</code> directamente desde el disco. Bajo el protocolo
+        <code>file://</code> el navegador bloquea tanto los módulos de JavaScript como la
+        descarga del PDF. Sirve la carpeta por HTTP —por ejemplo con <code>npx serve</code>—
+        y abre la dirección que imprima en la terminal.
+      </p>
+
+      <footer class="library__foot">
+        <p>Pablo Nieto Pérez</p>
+        <p><a href="https://wib.digital">wib.digital</a></p>
+        <p><a href="https://github.com/pabloWIB/Docs-Reader">Código en GitHub</a></p>
+        <p class="site-credit">
+          Built by <a href="https://wib.digital" rel="noopener">wib.digital</a> —
+          <a href="https://www.fiverr.com/pablonietop" rel="noopener">hire me on Fiverr</a>
+        </p>
+      </footer>
+    </section>
+
+    <!-- ───────────────────────────────── Lector ───────────────────────────── -->
+    <section class="screen reader" id="reader" aria-labelledby="reader-title" hidden>
+
+      <header class="bar bar--top">
+        <button class="btn btn--quiet" id="btn-back" type="button">
+          <span aria-hidden="true">←</span> Biblioteca
+        </button>
+        <div class="bar__id">
+          <h2 class="bar__title" id="reader-title" tabindex="-1"></h2>
+          <p class="bar__by" id="reader-subtitle" hidden></p>
         </div>
-        <div id="ctrlbar">
-            <button id="btn-play" onclick="togglePlay()">▶ LEER</button>
-            <button id="btn-stop" onclick="stopReading()" disabled>■ STOP</button>
-            <div class="sep"></div>
-            <select id="voiceSelect" onchange="setVoice()">
-                <option>cargando...</option>
-            </select>
-            <div class="sep"></div>
-            <div class="speed-wrap">
-                <input type="range" id="speedRange" min="0.5" max="2.5" step="0.1" value="1" oninput="updateSpeed()">
-                <span class="speed-label" id="speedVal">1.0×</span>
-            </div>
-            <div class="page-nav">
-                <button class="btn-pg" onclick="navPage(-1)">‹</button>
-                <button class="btn-pg" onclick="navPage(1)">›</button>
-            </div>
+        <p class="bar__pages" id="page-counter" hidden>
+          <span class="visually-hidden">Página</span>
+          <span id="page-current">1</span> / <span id="page-total">1</span>
+        </p>
+      </header>
+
+      <div class="bar bar--tools">
+        <div class="tools__playback" id="speech-playback">
+          <button class="btn btn--primary" id="btn-play" type="button" disabled
+            aria-label="Leer el documento en voz alta">Leer</button>
+          <button class="btn" id="btn-stop" type="button" disabled>Detener</button>
         </div>
-        <div id="progressbar">
-            <div id="progressfill"></div>
+
+        <div class="pager">
+          <button class="btn btn--icon" id="btn-prev" type="button" aria-label="Página anterior">
+            <span aria-hidden="true">‹</span>
+          </button>
+          <button class="btn btn--icon" id="btn-next" type="button" aria-label="Página siguiente">
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
-        <div id="viewer">
-            <div id="loading">
-                <div class="dot-loader"><span></span><span></span><span></span></div>
-                <p>cargando pdf</p>
-            </div>
+
+        <div class="tools__settings" id="speech-settings">
+          <div class="field field--voice">
+            <label class="field__label" for="voice">Voz</label>
+            <select class="field__select" id="voice"></select>
+          </div>
+          <span class="bar__sep" aria-hidden="true"></span>
+          <div class="field">
+            <label class="field__label" for="speed">Velocidad</label>
+            <input class="field__range" id="speed" type="range" min="0.5" max="2.5" step="0.1" value="1"
+              aria-valuetext="1,0×">
+            <output class="field__output" id="speed-value" for="speed">1,0×</output>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      <p class="notice" id="speech-notice" hidden>
+        Este navegador no ofrece síntesis de voz, así que la lectura en voz alta no está
+        disponible. El documento se puede leer y recorrer igualmente.
+      </p>
 
-        const BASE = './pdf/';
-        let pdfDoc = null, totalPages = 0, curPage = 1;
-        let allWords = [], flatWords = [], wordEls = [];
-        let synth = window.speechSynthesis, voices = [], selVoice = null;
-        let speaking = false, paused = false, curIdx = 0, rate = 1.0;
+      <div class="progress" id="progress" role="progressbar" aria-label="Progreso de la lectura" aria-valuemin="0"
+        aria-valuemax="100" aria-valuenow="0">
+        <div class="progress__fill" id="progress-fill"></div>
+      </div>
 
-        function openBook(file, title, author) {
-            document.getElementById('screen-select').style.display = 'none';
-            document.getElementById('screen-reader').style.display = 'flex';
-            document.getElementById('topbar-title').textContent = title;
-            loadPDF(BASE + file);
-        }
+      <div class="viewer" id="viewer">
+        <div class="pages" id="pages"></div>
+        <div id="viewer-status" role="status" aria-live="polite"></div>
+      </div>
 
-        function goBack() {
-            stopReading();
-            // reset viewer
-            allWords = []; flatWords = []; wordEls = [];
-            document.getElementById('viewer').innerHTML =
-                `<div id="loading"><div class="dot-loader"><span></span><span></span><span></span></div><p>cargando pdf</p></div>`;
-            document.getElementById('progressfill').style.width = '0%';
-            document.getElementById('page-counter').textContent = '— / —';
-            document.getElementById('screen-reader').style.display = 'none';
-            document.getElementById('screen-select').style.display = 'flex';
-        }
+    </section>
+  </main>
 
-        async function loadPDF(url) {
-            try {
-                pdfDoc = await pdfjsLib.getDocument(url).promise;
-                totalPages = pdfDoc.numPages;
-                document.getElementById('loading').remove();
-                await renderAll();
-                buildWords();
-                loadVoices();
-                updateCounter(1);
-            } catch (e) {
-                document.getElementById('loading').innerHTML =
-                    `<p style="color:#666;font-size:.75rem">error: ${e.message}</p>`;
-            }
-        }
-
-        async function renderAll() {
-            const viewer = document.getElementById('viewer');
-            const scale = window.innerWidth < 480 ? 1.0 : 1.6;
-            for (let p = 1; p <= totalPages; p++) {
-                const page = await pdfDoc.getPage(p);
-                const vp = page.getViewport({ scale });
-
-                const block = document.createElement('div');
-                block.className = 'page-block'; block.id = `p${p}`;
-
-                const canvas = document.createElement('canvas');
-                canvas.width = vp.width; canvas.height = vp.height;
-                block.appendChild(canvas);
-
-                const tl = document.createElement('div');
-                tl.className = 'text-layer'; tl.id = `tl${p}`;
-                block.appendChild(tl);
-
-                const tag = document.createElement('div');
-                tag.className = 'page-tag'; tag.textContent = p;
-                block.appendChild(tag);
-
-                viewer.appendChild(block);
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-
-                const content = await page.getTextContent();
-                const pageWords = [];
-                content.items.forEach(item => {
-                    if (!item.str.trim()) return;
-                    const tx = pdfjsLib.Util.transform(vp.transform, item.transform);
-                    const wScale = item.width > 0 ? (item.width * vp.scale / item.str.length) : 8;
-                    item.str.split(/\s+/).filter(w => w).forEach((word, wi) => {
-                        pageWords.push({
-                            text: word,
-                            x: tx[4] + wi * wScale * word.length * .5,
-                            y: vp.height - tx[5] - (item.height * vp.scale || 12),
-                            w: wScale * word.length,
-                            h: (item.height * vp.scale) || 12,
-                            page: p
-                        });
-                    });
-                });
-                allWords.push(pageWords);
-            }
-        }
-
-        function buildWords() {
-            flatWords = []; wordEls = [];
-            allWords.forEach((pw, pi) => {
-                const tl = document.getElementById(`tl${pi + 1}`);
-                pw.forEach(w => {
-                    const s = document.createElement('span');
-                    s.className = 'word';
-                    s.style.cssText = `left:${w.x}px;top:${w.y}px;width:${Math.max(w.w, 4)}px;height:${Math.max(w.h, 10)}px`;
-                    tl.appendChild(s);
-                    flatWords.push(w.text);
-                    wordEls.push(s);
-                });
-            });
-        }
-
-        // ── VOICES ──
-        function loadVoices() {
-            const fill = () => {
-                voices = synth.getVoices();
-                const sel = document.getElementById('voiceSelect');
-                sel.innerHTML = '';
-                voices.forEach((v, i) => {
-                    const o = document.createElement('option');
-                    o.value = i;
-                    o.textContent = `${v.name} (${v.lang})`;
-                    sel.appendChild(o);
-                });
-                const esIdx = voices.findIndex(v => v.lang.startsWith('en'));
-                const idx = esIdx >= 0 ? esIdx : 0;
-                sel.value = idx; selVoice = voices[idx];
-            };
-            fill(); synth.onvoiceschanged = fill;
-        }
-        function setVoice() {
-            selVoice = voices[document.getElementById('voiceSelect').value];
-            if (speaking && !paused) { synth.cancel(); speakFrom(curIdx); }
-        }
-        function updateSpeed() {
-            rate = parseFloat(document.getElementById('speedRange').value);
-            document.getElementById('speedVal').textContent = rate.toFixed(1) + '×';
-            if (speaking && !paused) { synth.cancel(); speakFrom(curIdx); }
-        }
-
-        // ── TTS ──
-        function togglePlay() {
-            if (!speaking) startReading();
-            else if (paused) resumeReading();
-            else pauseReading();
-        }
-
-        function startReading() {
-            if (!flatWords.length) return;
-            speaking = true; paused = false; curIdx = 0;
-            document.getElementById('btn-play').textContent = '⏸ PAUSAR';
-            document.getElementById('btn-stop').disabled = false;
-            speakFrom(0);
-        }
-
-        function speakFrom(startIdx) {
-            synth.cancel();
-            const CHUNK = 40;
-            let idx = startIdx;
-            function next() {
-                if (!speaking || idx >= flatWords.length) { if (idx >= flatWords.length) done(); return; }
-                const chunk = flatWords.slice(idx, idx + CHUNK).join(' ');
-                const utt = new SpeechSynthesisUtterance(chunk);
-                utt.voice = selVoice; utt.rate = rate;
-                utt.lang = selVoice?.lang || 'en-US';
-                utt.onboundary = e => {
-                    if (e.name !== 'word') return;
-                    const n = chunk.substring(0, e.charIndex).split(/\s+/).filter(w => w).length;
-                    mark(idx + n);
-                };
-                utt.onend = () => { idx += CHUNK; curIdx = idx; if (speaking && !paused) next(); };
-                utt.onerror = () => { idx += CHUNK; if (speaking && !paused) next(); };
-                synth.speak(utt);
-            }
-            next();
-        }
-
-        function mark(i) {
-            curIdx = i;
-            wordEls.forEach((el, j) => {
-                el.className = 'word' + (j === i ? ' current' : j < i ? ' done' : '');
-            });
-            if (wordEls[i]) wordEls[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            document.getElementById('progressfill').style.width = (i / flatWords.length * 100) + '%';
-            // update page
-            let count = 0;
-            for (let p = 0; p < allWords.length; p++) {
-                count += allWords[p].length;
-                if (i < count) { updateCounter(p + 1); break; }
-            }
-        }
-
-        function pauseReading() {
-            paused = true; synth.pause();
-            document.getElementById('btn-play').textContent = '▶ REANUDAR';
-        }
-        function resumeReading() {
-            paused = false;
-            document.getElementById('btn-play').textContent = '⏸ PAUSAR';
-            synth.cancel(); speakFrom(curIdx);
-        }
-        function stopReading() {
-            speaking = false; paused = false; synth.cancel();
-            wordEls.forEach(el => el.className = 'word');
-            document.getElementById('btn-play').textContent = '▶ LEER';
-            document.getElementById('btn-stop').disabled = true;
-            document.getElementById('progressfill').style.width = '0%';
-            curIdx = 0;
-        }
-        function done() {
-            speaking = false;
-            document.getElementById('btn-play').textContent = '▶ LEER';
-            document.getElementById('btn-stop').disabled = true;
-        }
-
-        // ── NAV ──
-        function navPage(dir) {
-            const np = curPage + dir;
-            if (np < 1 || np > totalPages) return;
-            curPage = np;
-            document.getElementById(`p${curPage}`)?.scrollIntoView({ behavior: 'smooth' });
-            updateCounter(curPage);
-        }
-        function updateCounter(p) {
-            curPage = p;
-            document.getElementById('page-counter').textContent = `${p} / ${totalPages || '—'}`;
-        }
-    </script>
+  <script>
+    // Classic, inline and tiny on purpose: an ES module cannot run under
+    // file://, so this is the only code that can explain why the page is empty.
+    if (location.protocol === "file:") {
+      document.getElementById("file-protocol-notice").hidden = false;
+      document.getElementById("shelf").hidden = true;
+      document.getElementById("local").hidden = true;
+    }
+  </script>
 </body>
 
 </html>
