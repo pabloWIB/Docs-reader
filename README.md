@@ -2,7 +2,7 @@
 
 A browser PDF reader that also reads out loud, highlighting each word on the page as it is spoken.
 
-[![Live demo](https://img.shields.io/badge/demo-docsreader.wib.digital-2ea44f)](https://docsreader.wib.digital)
+[![Live demo](https://img.shields.io/badge/demo-pablowib.github.io/Docs-Reader-2ea44f)](https://pablowib.github.io/Docs-Reader)
 [![Hire me on Fiverr](https://img.shields.io/badge/Hire%20me%20on-Fiverr-1DBF73?style=for-the-badge&logo=fiverr&logoColor=white)](https://www.fiverr.com/pablonietop)
 ![Dependencies](https://img.shields.io/badge/npm%20dependencies-0-brightgreen)
 ![Build step](https://img.shields.io/badge/build%20step-none-lightgrey)
@@ -162,7 +162,7 @@ exactly the same.
 
 ## Deployment
 
-Deployed on Vercel at [docsreader.wib.digital](https://docsreader.wib.digital).
+Deployed on GitHub Pages at [pablowib.github.io/Docs-Reader](https://pablowib.github.io/Docs-Reader).
 Static: publish the repository root as-is, with no build command and no output
 directory. Everything under `pdf/` is served publicly.
 
